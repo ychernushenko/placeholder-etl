@@ -20,6 +20,7 @@ func ExtractPosts(DB *sql.DB, startID, limit int, prefix string) (int, error) {
         LIMIT $2`
 	rows, err := DB.Query(query, startID, limit)
 	if err != nil {
+		logger.Printf("Failed to query posts: %v\n", err)
 		return 0, fmt.Errorf("failed to query posts: %v", err)
 	}
 	defer rows.Close()
@@ -30,6 +31,7 @@ func ExtractPosts(DB *sql.DB, startID, limit int, prefix string) (int, error) {
 		var post RawPost
 		err := rows.Scan(&post.IngestID, &post.APIID, &post.IngestTimestamp, &post.APIUserID, &post.APITitle, &post.APIBody)
 		if err != nil {
+			logger.Printf("Failed to scan post: %v\n", err)
 			return 0, fmt.Errorf("failed to scan post: %v", err)
 		}
 		posts = append(posts, post)
@@ -37,32 +39,17 @@ func ExtractPosts(DB *sql.DB, startID, limit int, prefix string) (int, error) {
 	}
 
 	if len(posts) == 0 {
+		logger.Println("No new posts to extract.")
 		return 0, nil
 	}
 
-	data, err := json.Marshal(posts)
+	err = saveToFile(posts, prefix, "raw_posts")
 	if err != nil {
-		return 0, fmt.Errorf("failed to marshal posts: %v", err)
+		logger.Printf("Failed to save posts to file: %v\n", err)
+		return 0, fmt.Errorf("failed to save posts to file: %v", err)
 	}
 
-	// Ensure the directory exists
-	err = os.MkdirAll(prefix, os.ModePerm)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create directory: %v", err)
-	}
-
-	filename := filepath.Join(prefix, fmt.Sprintf("raw_posts_%d.json", time.Now().Unix()))
-	file, err := os.Create(filename)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create file: %v", err)
-	}
-	defer file.Close()
-
-	_, err = file.Write(data)
-	if err != nil {
-		return 0, fmt.Errorf("failed to write posts to file: %v", err)
-	}
-
+	logger.Printf("Successfully extracted and saved %d posts.\n", len(posts))
 	return latestID, nil
 }
 
@@ -70,18 +57,21 @@ func ExtractPosts(DB *sql.DB, startID, limit int, prefix string) (int, error) {
 func TransformPosts(filename string, prefix string) ([]ProcessedPost, error) {
 	file, err := os.Open(filename)
 	if err != nil {
+		logger.Printf("Failed to open file: %v\n", err)
 		return nil, fmt.Errorf("failed to open file: %v", err)
 	}
 	defer file.Close()
 
 	data, err := io.ReadAll(file)
 	if err != nil {
+		logger.Printf("Failed to read raw posts from file: %v\n", err)
 		return nil, fmt.Errorf("failed to read raw posts from file: %v", err)
 	}
 
 	var rawPosts []RawPost
 	err = json.Unmarshal(data, &rawPosts)
 	if err != nil {
+		logger.Printf("Failed to unmarshal raw posts: %v\n", err)
 		return nil, fmt.Errorf("failed to unmarshal raw posts: %v", err)
 	}
 
@@ -96,28 +86,46 @@ func TransformPosts(filename string, prefix string) ([]ProcessedPost, error) {
 		processedPosts = append(processedPosts, processedPost)
 	}
 
-	data, err = json.Marshal(processedPosts)
+	err = saveToFile(processedPosts, prefix, "processed_posts")
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal processed posts: %v", err)
+		logger.Printf("Failed to save processed posts to file: %v\n", err)
+		return nil, fmt.Errorf("failed to save processed posts to file: %v", err)
 	}
 
-	// Ensure the directory exists
-	err = os.MkdirAll(prefix, os.ModePerm)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create directory: %v", err)
-	}
-
-	outputFilename := filepath.Join(prefix, fmt.Sprintf("processed_posts_%d.json", time.Now().Unix()))
-	outputFile, err := os.Create(outputFilename)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create file: %v", err)
-	}
-	defer outputFile.Close()
-
-	_, err = outputFile.Write(data)
-	if err != nil {
-		return nil, fmt.Errorf("failed to write processed posts to file: %v", err)
-	}
+	IncrementETLPosts(uint64(len(processedPosts)))
+	logger.Printf("Successfully transformed and saved %d posts.\n", len(processedPosts))
 
 	return processedPosts, nil
+}
+
+// saveToFile saves data to a file with a specified prefix and type
+func saveToFile(data interface{}, prefix, fileType string) error {
+	// Ensure the directory exists
+	err := os.MkdirAll(prefix, os.ModePerm)
+	if err != nil {
+		logger.Printf("Failed to create directory: %v\n", err)
+		return fmt.Errorf("failed to create directory: %v", err)
+	}
+
+	filename := filepath.Join(prefix, fmt.Sprintf("%s_%d.json", fileType, time.Now().Unix()))
+	file, err := os.Create(filename)
+	if err != nil {
+		logger.Printf("Failed to create file: %v\n", err)
+		return fmt.Errorf("failed to create file: %v", err)
+	}
+	defer file.Close()
+
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		logger.Printf("Failed to marshal data: %v\n", err)
+		return fmt.Errorf("failed to marshal data: %v", err)
+	}
+
+	_, err = file.Write(jsonData)
+	if err != nil {
+		logger.Printf("Failed to write data to file: %v\n", err)
+		return fmt.Errorf("failed to write data to file: %v", err)
+	}
+
+	return nil
 }

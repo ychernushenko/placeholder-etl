@@ -4,10 +4,19 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"sync/atomic"
 	"time"
 
 	_ "github.com/lib/pq"
+)
+
+var (
+	logger             *log.Logger
+	injestErrorsTotal  uint64
+	postsInjestedTotal uint64
+	postsETLTotal      uint64
 )
 
 func InitDB() *sql.DB {
@@ -65,4 +74,64 @@ func InitDB() *sql.DB {
 	fmt.Println("Database table ensured.")
 
 	return DB
+}
+
+func InitLogger() {
+	// Create logs directory if it doesn't exist
+	if err := os.MkdirAll("logs", os.ModePerm); err != nil {
+		fmt.Printf("Failed to create logs directory: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Open log file
+	logFile, err := os.OpenFile("logs/etl.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Printf("Failed to open log file: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Create logger
+	logger = log.New(logFile, "", log.LstdFlags)
+	logger.Println("Logger initialized successfully")
+}
+
+// HealthCheckHandler handles health check requests
+func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
+
+// MetricsHandler handles metrics requests (Prometheus style)
+func MetricsHandler(w http.ResponseWriter, r *http.Request) {
+	metrics := fmt.Sprintf(`
+# HELP injest_post_total The total number posts ingested to DB.
+# TYPE injest_post_total counter
+injest_post_total %d
+
+# HELP injest_errors_total The total number of ingest errors.
+# TYPE injest_errors_total counter
+injest_errors_total %d
+
+# HELP etl_post_total The total number of ETL posts.
+# TYPE etl_post_total counter
+etl_post_total %d
+`, atomic.LoadUint64(&postsInjestedTotal), atomic.LoadUint64(&injestErrorsTotal), atomic.LoadUint64(&postsETLTotal))
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(metrics))
+}
+
+// IncrementInjectErrors increments the ingest errors counter
+func IncrementInjestErrors() {
+	atomic.AddUint64(&injestErrorsTotal, 1)
+}
+
+// IncrementPostsInjested increments the posts injested to database counter
+func IncrementPostsInjested(numOfPosts uint64) {
+	atomic.AddUint64(&postsInjestedTotal, numOfPosts)
+}
+
+// IncrementETLPosts increments the posts processed with ETL to database counter
+func IncrementETLPosts(numOfPosts uint64) {
+	atomic.AddUint64(&postsETLTotal, numOfPosts)
 }

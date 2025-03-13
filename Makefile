@@ -9,6 +9,7 @@ build:
 clean:
 	docker-compose down --volumes --rmi all
 	rm -rf ./data
+	rm -rf ./logs
 
 run:
 	$(MAKE) clean
