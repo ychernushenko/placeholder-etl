@@ -57,7 +57,7 @@ func ETLtoDatalake(DB *sql.DB, secRate int, startID, limit int, rawPrefix, proce
 		latestID = newLatestID
 
 		// Transform the extracted posts
-		rawFilename := fmt.Sprintf("%s_raw_posts_%d.json", rawPrefix, time.Now().Unix())
+		rawFilename := fmt.Sprintf("%sraw_posts_%d.json", rawPrefix, time.Now().Unix())
 		_, err = TransformPosts(rawFilename, processedPrefix)
 		if err != nil {
 			fmt.Printf("Error during transformation: %v\n", err)

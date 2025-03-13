@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -44,7 +45,13 @@ func ExtractPosts(DB *sql.DB, startID, limit int, prefix string) (int, error) {
 		return 0, fmt.Errorf("failed to marshal posts: %v", err)
 	}
 
-	filename := fmt.Sprintf("%s_raw_posts_%d.json", prefix, time.Now().Unix())
+	// Ensure the directory exists
+	err = os.MkdirAll(prefix, os.ModePerm)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create directory: %v", err)
+	}
+
+	filename := filepath.Join(prefix, fmt.Sprintf("raw_posts_%d.json", time.Now().Unix()))
 	file, err := os.Create(filename)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create file: %v", err)
@@ -94,7 +101,13 @@ func TransformPosts(filename string, prefix string) ([]ProcessedPost, error) {
 		return nil, fmt.Errorf("failed to marshal processed posts: %v", err)
 	}
 
-	outputFilename := fmt.Sprintf("%s_processed_posts_%d.json", prefix, time.Now().Unix())
+	// Ensure the directory exists
+	err = os.MkdirAll(prefix, os.ModePerm)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create directory: %v", err)
+	}
+
+	outputFilename := filepath.Join(prefix, fmt.Sprintf("processed_posts_%d.json", time.Now().Unix()))
 	outputFile, err := os.Create(outputFilename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create file: %v", err)
