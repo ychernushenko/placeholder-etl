@@ -1,3 +1,5 @@
+
+
 ## Install (MacOS)
 brew install docker-compose
 
@@ -12,3 +14,6 @@ http://localhost:8080/metrics
 
 ## Logs
 ./logs (cleaned up before every re-run)
+
+## Tests
+make test

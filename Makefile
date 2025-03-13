@@ -1,7 +1,9 @@
 .PHONY: build test clean run
 
 test:
-	docker-compose run --rm placeholder-etl go test ./...
+	$(MAKE) clean
+	docker-compose run --rm placeholder-etl go test -coverprofile=coverage.out ./...
+    docker-compose run --rm placeholder-etl go tool cover -html=coverage.out -o coverage.html
 
 build:
 	docker-compose build --no-cache

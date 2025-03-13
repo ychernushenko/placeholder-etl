@@ -10,11 +10,7 @@ import (
 )
 
 // GetAPIPosts retrieves posts from the API
-func GetAPIPosts() ([]APIPost, error) {
-	baseURL := "https://jsonplaceholder.typicode.com/"
-	endpointSuffix := "posts"
-	url := baseURL + endpointSuffix
-
+func GetAPIPosts(url string) ([]APIPost, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		logger.Printf("Failed to ingest posts: %v\n", err)

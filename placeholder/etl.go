@@ -78,10 +78,11 @@ func TransformPosts(filename string, prefix string) ([]ProcessedPost, error) {
 	var processedPosts []ProcessedPost
 	for _, rawPost := range rawPosts {
 		processedPost := ProcessedPost{
-			UserID: rawPost.APIUserID,
-			ID:     rawPost.APIID,
-			Title:  rawPost.APITitle,
-			Body:   rawPost.APIBody,
+			UserID:          rawPost.APIUserID,
+			ID:              rawPost.APIID,
+			Title:           rawPost.APITitle,
+			Body:            rawPost.APIBody,
+			IngestTimestamp: rawPost.IngestTimestamp,
 		}
 		processedPosts = append(processedPosts, processedPost)
 	}

@@ -15,7 +15,7 @@ func IngestAPIData(DB *sql.DB, secRate int) {
 		fmt.Println("Starting ETL process...")
 
 		// Extract
-		posts, err := GetAPIPosts()
+		posts, err := GetAPIPosts("https://jsonplaceholder.typicode.com/posts")
 		if err != nil {
 			fmt.Printf("Error during extraction: %v\n", err)
 			continue

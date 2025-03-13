@@ -22,8 +22,9 @@ type RawPost struct {
 
 // ProcessedPost represents the structure of a processed post
 type ProcessedPost struct {
-	UserID int    `json:"userId"`
-	ID     int    `json:"id"`
-	Title  string `json:"title"`
-	Body   string `json:"body"`
+	UserID          int       `json:"user_id"`
+	ID              int       `json:"id"`
+	Title           string    `json:"title"`
+	Body            string    `json:"body"`
+	IngestTimestamp time.Time `json:"ingest_timestamp"`
 }
